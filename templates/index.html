@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>AI Cloud Intrusion Risk Dashboard</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f6f9;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 40px auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+        }
+
+        h2 {
+            text-align: center;
+            color: #333;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-top: 25px;
+        }
+
+        input {
+            padding: 10px;
+            width: 100%;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        button {
+            margin-top: 25px;
+            width: 100%;
+            padding: 12px;
+            background: #0078d4;
+            color: white;
+            border: none;
+            font-size: 16px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #005a9e;
+        }
+
+        .result-box {
+            margin-top: 30px;
+            padding: 20px;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .low { background: #d4edda; color: #155724; }
+        .medium { background: #fff3cd; color: #856404; }
+        .high { background: #f8d7da; color: #721c24; }
+
+        .progress {
+            background: #e0e0e0;
+            height: 20px;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+    </style>
+</head>
+
+<body>
+<div class="container">
+    <h2>AI-Based Cloud Intrusion Risk Scoring</h2>
+
+    <div class="grid">
+        <input type="number" id="cpu" placeholder="CPU Usage (%)">
+        <input type="number" id="memory" placeholder="Memory Usage (%)">
+        <input type="number" id="logins" placeholder="Login Attempts">
+    </div>
+
+    <button onclick="checkRisk()">Analyze Risk</button>
+
+    <div id="result" class="result-box">
+        <h3 id="riskText"></h3>
+
+        <div class="progress">
+            <div id="progressBar" class="progress-bar"></div>
+        </div>
+
+        <h3 id="riskScore"></h3>
+
+        <p><strong>Attack Type:</strong> <span id="attackType"></span></p>
+        <p><strong>Affected Resource:</strong> <span id="affectedResource"></span></p>
+        <p><strong>Recommended Action:</strong> <span id="action"></span></p>
+    </div>
+</div>
+
+<script>
+function checkRisk() {
+    const cpu = parseInt(document.getElementById("cpu").value) || 0;
+    const memory = parseInt(document.getElementById("memory").value) || 0;
+    const logins = parseInt(document.getElementById("logins").value) || 0;
+
+    const data = {
+        cpu_usage: cpu,
+        memory_usage: memory,
+        login_attempts: logins
+    };
+
+    fetch("/predict", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(result => {
+        const resultBox = document.getElementById("result");
+        const progressBar = document.getElementById("progressBar");
+        const risk = result.risk_score;
+
+        // Show result box
+        resultBox.style.display = "block";
+
+        // Reset classes
+        resultBox.className = "result-box";
+
+        let riskLevel = "";
+        let barColor = "";
+
+        if (risk < 30) {
+            resultBox.classList.add("low");
+            riskLevel = "Low Risk";
+            barColor = "#28a745";
+        } else if (risk < 70) {
+            resultBox.classList.add("medium");
+            riskLevel = "Medium Risk";
+            barColor = "#ffc107";
+        } else {
+            resultBox.classList.add("high");
+            riskLevel = "High Risk";
+            barColor = "#dc3545";
+        }
+
+        document.getElementById("riskText").innerText = riskLevel;
+        document.getElementById("riskScore").innerText = "Risk Score: " + risk + "%";
+        document.getElementById("attackType").innerText = result.attack_type;
+        document.getElementById("affectedResource").innerText = result.affected_resource;
+        document.getElementById("action").innerText = result.recommended_action;
+
+        progressBar.style.width = risk + "%";
+        progressBar.style.backgroundColor = barColor;
+    })
+    .catch(error => {
+        alert("Error connecting to backend");
+        console.error(error);
+    });
+}
+</script>
+</body>
+</html>
