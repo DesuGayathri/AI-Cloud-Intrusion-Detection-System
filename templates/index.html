@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+<title>AI Cloud Intrusion SOC Dashboard</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+
+body{
+background:#0f172a;
+color:white;
+font-family:Arial;
+margin:0;
+}
+
+.container{ padding:20px; }
+
+
+.card{
+background:#1e293b;
+padding:20px;
+margin:10px;
+border-radius:10px;
+}
+
+.grid{
+display:grid;
+grid-template-columns: repeat(4,1fr);
+gap:15px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<h2>🛡️ AI Cloud Intrusion Dashboard</h2>
+
+<h3 id="alertBanner" style="color:red;"></h3>
+
+
+<div class="grid">
+
+<div class="card">
+<h3>Total Threats Detected</h3>
+<p id="attackCount">0</p>
+</div>
+
+
+<div class="card">
+<h3>Risk Score</h3>
+<p id="risk"></p>
+</div>
+
+<div class="card">
+<h3>Attack Type</h3>
+<p id="attack"></p>
+</div>
+
+<div class="card">
+<h3>Affected Resource</h3>
+<p id="resource"></p>
+</div>
+
+<div class="card">
+<h3>Recommended Action</h3>
+<p id="action"></p>
+</div>
+
+</div>
+
+<div class="card">
+<h3>Risk Timeline</h3>
+<canvas id="chart"></canvas>
+</div>
+
+</div>
+
+
+<script>
+if ("Notification" in window) {
+    Notification.requestPermission();
+}
+
+let attackCounter = 0;
+let riskHistory=[];
+let chart=null;
+
+function autoMonitor(){
+
+fetch("/auto_predict")
+.then(res=>res.json())
+.then(data=>{
+
+let riskElement = document.getElementById("risk");
+
+riskElement.innerText = data.risk_score + "%";
+
+// SOC color classification
+riskElement.style.color =
+data.risk_score > 70 ? "red" :
+data.risk_score > 30 ? "orange" :
+"lightgreen";
+
+document.getElementById("attack").innerText=data.attack_type;
+document.getElementById("resource").innerText=data.affected_resource;
+document.getElementById("action").innerText=data.recommended_action;
+document.getElementById("alertBanner").innerText =
+data.risk_score > 70 ? "🚨 CRITICAL THREAT DETECTED" : "";
+if(data.attack_type !== "Normal Activity"){
+attackCounter++;
+}
+
+document.getElementById("attackCount").innerText = attackCounter;
+
+updateChart(data.risk_score);
+if(data.risk_score > 70){
+
+//new Notification("🚨 Critical Cloud Threat Detected!", {
+//body: "Attack Type: " + data.attack_type
+//});
+// Ask permission once when page loads
+if ("Notification" in window) {
+    Notification.requestPermission().then(permission => {
+        console.log("Notification permission:", permission);
+    });
+}
+
+
+}
+
+
+});
+
+}
+
+function updateChart(score){
+
+riskHistory.push(score);
+
+// Keep only last 20 records (real SOC style)
+if(riskHistory.length > 20){
+riskHistory.shift();
+}
+
+
+if(chart) chart.destroy();
+
+chart=new Chart(document.getElementById("chart"),{
+type:"line",
+data:{
+labels:riskHistory.map((_,i)=>i+1),
+datasets:[{
+label:"Risk Score",
+data:riskHistory
+}]
+}
+});
+
+}
+
+autoMonitor();
+setInterval(autoMonitor,3000);
+if(data.risk_score > 70){
+
+if(Notification.permission === "granted"){
+
+new Notification("🚨 Critical Cloud Threat Detected!", {
+body: "Attack Type: " + data.attack_type
+});
+
+}
+
+}
+
+</script>
+
+</body>
+</html>
